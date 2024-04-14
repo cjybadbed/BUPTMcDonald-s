@@ -1,3 +1,33 @@
+<style>
+code {
+    font-family: "Fira Code";
+    font-feature-settings: "cv01", "cv02", "ss01", "cv12", "ss05", "ss03";
+}
+body {
+    font-family: 'Segoe UI','Fira Code','DengXian' !important;
+}
+/* p {
+    font-size: medium;
+}
+li {
+    font-size: medium;
+} */
+.supsub {
+    display: inline-block;
+}
+
+.supsub sup,
+.supsub sub {
+    position: relative;
+    display: block;
+    font-size: .5em;
+    line-height: 1.2;
+}
+
+.supsub sub {
+    top: .3em;
+}
+</style>
 ## 问题描述
 2023 年 5 月，麦当劳在北邮开业。大量的学生去那里订餐。正因为如此，麦当劳的在线点餐系统经常关闭以避免拥挤，尤其是在午餐和晚餐时间。该系统的关闭时间不确定。北邮的学生认为这非常麻烦。
 
