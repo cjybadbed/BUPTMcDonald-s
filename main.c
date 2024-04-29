@@ -14,45 +14,58 @@ struct COMBO{
     int foodIndex[20];
 }combo[100];
 
+struct ORDER{
+    int foodIndex[20];
+    int in, out;
+};
 
 FILE* dict;
 FILE* input;
 FILE* output;
 
-void secPrint(int n){
-    int hour=7+(n-n%3600)/3600;
-    n%=3600;
-    int min=(n-n%60)/60;
-    int sec=n%60;
-    printf("%d:%d:%d", hour, min, sec);
+int foodCount, comboCount;
+
+
+void secPrint(int sec, FILE* output){
+    int hour=7+(sec-sec%3600)/3600;
+    sec%=3600;
+    int min=(sec-sec%60)/60;
+    int sec=sec%60;
+    fprintf(output, "%d:%d:%d\n", hour, min, sec);
 }
 
 int time2sec(char time[9]){
     int hour=(time[0]-'0')*10+time[1]-'0'-7,
         min=(time[3]-'0')*10+time[4]-'0',
         sec=(time[6]-'0')*10+time[7]-'0';
-    int n=hour*3600+min*60+sec;
-    return n;
+    int foodCount=hour*3600+min*60+sec;
+    return foodCount;
 }
 
-int search(char* name, int n){
-    for(int i=0;i<n;i++){
+int searchInFood(char* name){
+    for(int i=0;i<foodCount;i++){
         if(strcmp(food[i].name, name)==0) return i;
     }
     return -1;
 }
 
-void dictRead(FILE*dict){
-    int n, m;
-    fscanf(dict, "%d%d\n", &n, &m);
-    for(int i=0;i<n;i++) fscanf(dict, "%s", food[i].name);
-    for(int i=0;i<m;i++){
+int searchInCombo(char* name){
+    for(int i=0;i<foodCount;i++){
+        if(strcmp(combo[i].name, name)==0) return i;
+    }
+    return -1;
+}
+
+void dictRead(FILE* dict){
+    fscanf(dict, "%d%d\foodCount", &foodCount, &comboCount);
+    for(int i=0;i<foodCount;i++) fscanf(dict, "%s", food[i].name);
+    for(int i=0;i<comboCount;i++){
         fscanf(dict, "%s", combo[i].name);
         combo[i].count=0;
         for(;;combo[i].count++){
             char name[30];
             fscanf(dict, "%s", name);
-            combo[i].foodIndex[combo[i].count]=search(name, n);
+            combo[i].foodIndex[combo[i].count]=searchInFood(name);
             int c=fgetc(dict);
             if(c==13||c==10) break;
             if(c==EOF) return;
@@ -60,13 +73,45 @@ void dictRead(FILE*dict){
     }
 }
 
+void orderRead(FILE* input, int i){
+    order[i].foodIndex={0};
+    char time[9], name[30];
+    fscanf(input, "%8s", &time);
+    order[i].in=time2sec(time);
+    fscanf(input, "%s", name);
+    if(searchInFood(name)!=-1) order[i].foodIndex[0]=searchInFood(name);
+    else memcpy(order[i].foodIndex, combo[searchInCombo(name)].foodIndex, sizeof(order[i].foodIndex));
+}
+
+void orderHandle(int w1, int w2, int i){
+    //TODO
+}
+
+void orderOutput(FILE* output, int i){
+    if(order[i].out!=-1) secPrint(order[i].out, output);
+    else fprintf(output, "Fail\n")
+}
+
+void inputRead(FILE* input){
+    int orderCount, w1, w2;
+    fscanf(input, "%d%d%d", &orderCount, &w1, &w2);
+    for(int i=0;i<foodCount;i++) fscanf(dict, "%d", food[i].time);
+    for(int i=0;i<foodCount;i++) fscanf(dict, "%d", food[i].cap);
+    struct ORDER* order=(struct ORDER*)malloc(orderCount*sizeof(struct ORDER));
+    for(int i=0;i<orderCount;i++){
+        orderRead(input,i);
+        orderHandle(w1,w2,i);
+        orderOutput(output,i);
+    }
+    free(order);
+}
+
 int main(int argc, char** argv){
     for(int i=0; i<100; i++){
         memset(combo[i].name, 0, sizeof(combo[i].name));
         memset(combo[i].foodIndex, -1, sizeof(combo[i].foodIndex));
-    }
-    for(int i=0; i<100; i++){
         memset(food[i].name, 0, sizeof(food[i].name));
+        memset(food[i].progress, 0, sizeof(food[i].progress));
     }
     dict=fopen("dict.dic", "r");
     input=fopen("input.txt", "r");
