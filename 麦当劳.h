@@ -1,6 +1,6 @@
 #pragma once
-#include<iostream>
 #include<string>
+#include<iomanip>
 #include<vector>
 #include<array>
 #include<algorithm>
@@ -24,8 +24,10 @@ public:
 class Order {
 public:
 	int seconds;//times elapsed since00:00:00
-	int comboNum;
+	int num;
+	int type;//0 for single 1 for combo
 };
+
 class Setup {
 public:
 	vector<Food>FoodLUT;
@@ -33,6 +35,14 @@ public:
 	int totalOrder, maxJunctionOrder, minJunctionOrder;
 	int typeOfFood, typeOfCombo;
 	vector<Order>OrderList;
+	int mapFood(const string& input)const {
+		int cur = 0;
+		for (const Food& f : FoodLUT) {
+			if (input == f.name)return cur;
+			cur++;
+		}
+		return -1;
+	}
 };
 
 Setup init() {
@@ -60,7 +70,7 @@ Setup init() {
 			cfg.ComboLUT.push_back(Combo(comboName));////
 			while (iss >> comp) {
 				vector<int>& tmp = cfg.ComboLUT.back().component;
-				tmp.push_back(mapFood(comp,cfg.FoodLUT));
+				tmp.push_back(cfg.mapFood(comp));
 				sort(tmp.begin(), tmp.end());
 			}
 		}
@@ -93,21 +103,77 @@ Setup init() {
 				cur++;
 			}
 		}
+		else {
+			cfg.OrderList.push_back(orderInterpreter(line, cfg.ComboLUT, cfg.FoodLUT));
+		}
 		
 	}
-
-
-
+	menu.close();
+	operation.close();
 	return cfg;
 }
-Order orderInterpreter(const string& line) {
-
+Order orderInterpreter(const string& line, const vector<Combo>& ComboLUT, const vector<Food>& FoodLUT) {
+	istringstream iss(line);
+	int time;
+	string content;
+	iss >> time >> content;
+	Order neworder;
+	neworder.seconds = time;
+	int num = 0;
+	for (const auto& a : ComboLUT) {
+		if (content == a.name) {
+			neworder.type = 1;
+			neworder.num = num;
+			return neworder;
+		}
+		num++;
+	}
+	num = 0;
+	for (const auto& a : FoodLUT) {
+		if (content == a.name) {
+			neworder.type = 0;
+			neworder.num = num;
+			return neworder;
+		}
+		num++;
+	}
+	return neworder;
 }
-int mapFood(const string& input, const vector<Food>& FoodLUT) {
+
+int mapCombo(const string& input, const vector<Combo>& ComboLUT) {
 	int cur = 0;
-	for (const Food& f : FoodLUT) {
+	for (const Combo& f : ComboLUT) {
 		if (input == f.name)return cur;
 		cur++;
 	}
-	return 0;
+	return -1;
+}
+int TimeProcess(const string& T) {
+	return ((int)T[0]) * 36000 + ((int)T[1]) * 3600 + ((int)T[3]) * 600 + ((int)T[4]) * 60 + ((int)T[5]) * 10 + (int)T[6];
+}
+string convertTime(int t) {//
+	if (t == -1) {
+		return "Fail";
+	}
+	int hour, minute, second;
+	hour = t / 3600;
+	t %= 3600;
+	minute = t / 60;
+	t %= 60;
+	second = t;
+	ostringstream oss;
+	oss << setfill('0') << setw(2) << hour << ':' << setw(2) << minute << ':' << second;
+	return oss.str();
+}
+void Cookupdate(vector<Food>&foodindex, int tick) {
+	static vector<int>CookingStatus;
+	CookingStatus.resize(foodindex.size());
+	for (int i = 0; i < foodindex.size(); i++) {
+		if (tick == 0) {
+			CookingStatus[i] = foodindex[i].worktime;
+		}
+		if(foodindex[i].storage<foodindex[i].capacity&&CookingStatus[i]==0)CookingStatus[i] = foodindex[i].worktime;
+		if (CookingStatus[i] == 1)foodindex[i].storage++;
+		CookingStatus[i]--;
+	}
 }
