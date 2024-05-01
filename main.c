@@ -1,6 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#define bool int
+#define true 1
+#define false 0
 
 
 struct FOOD{
@@ -16,6 +19,7 @@ struct COMBO{
 
 struct ORDER{
     int foodIndex[20];
+    int count;
     int in, out;
 };
 
@@ -73,21 +77,39 @@ void dictRead(FILE* dict){
     }
 }
 
-void orderRead(FILE* input, int i){
+void orderRead(FILE* input, int i, struct ORDER* order){
     order[i].foodIndex={0};
+    order[i].out=-1;
     char time[9], name[30];
     fscanf(input, "%8s", &time);
     order[i].in=time2sec(time);
     fscanf(input, "%s", name);
-    if(searchInFood(name)!=-1) order[i].foodIndex[0]=searchInFood(name);
-    else memcpy(order[i].foodIndex, combo[searchInCombo(name)].foodIndex, sizeof(order[i].foodIndex));
+    if(searchInFood(name)!=-1){
+        order[i].foodIndex[0]=searchInFood(name);
+        order[i].count=1;
+    } else{
+        memcpy(order[i].foodIndex, combo[searchInCombo(name)].foodIndex, sizeof(order[i].foodIndex));
+        order[i].count=combo[searchInCombo(name)].count;
+    }
 }
 
-void orderHandle(int w1, int w2, int i){
-    //TODO
+void orderHandle(int w1, int w2, int i, int* curCloseSec, int* curOpenSec, struct ORDER* order){
+    int afterInSecCount=0, expectedOut=0;
+    bool immediatelyComplete=true;
+    for(int j=0;j<order[i].count;j++) if((order[i].in-food[order[i].foodIndex[j]].progress)<food[order[i].foodIndex[j]].time){
+        immediatelyComplete=false;
+        break;
+    }
+    if(immediatelyComplete){
+        int expectedOut;
+        for(int j=0;j<20;j++) food[order[i].foodIndex[j]].progress+=food[order[i].foodIndex[j]].time;
+        //TODO
+    } else{
+        //TODO
+    }
 }
 
-void orderOutput(FILE* output, int i){
+void orderOutput(FILE* output, int i, struct ORDER* order){
     if(order[i].out!=-1) secPrint(order[i].out, output);
     else fprintf(output, "Fail\n")
 }
@@ -98,10 +120,11 @@ void inputRead(FILE* input){
     for(int i=0;i<foodCount;i++) fscanf(dict, "%d", food[i].time);
     for(int i=0;i<foodCount;i++) fscanf(dict, "%d", food[i].cap);
     struct ORDER* order=(struct ORDER*)malloc(orderCount*sizeof(struct ORDER));
+    int *curCloseSec=-1, *curOpenSec=-1;
     for(int i=0;i<orderCount;i++){
-        orderRead(input,i);
-        orderHandle(w1,w2,i);
-        orderOutput(output,i);
+        orderRead(input, i, *order);
+        orderHandle(w1, w2, i, *curCloseSec, *curOpenSec, *order);
+        orderOutput(output, i, *order);
     }
     free(order);
 }
