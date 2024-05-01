@@ -5,10 +5,10 @@
 #include<algorithm>
 #include"Âóµ±ÀÍ.h"
 
-void init() {
+Setup init() {
 
 }
 
 int main() {
-
+	Setup cfg = init();
 }
