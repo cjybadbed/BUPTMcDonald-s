@@ -11,4 +11,6 @@
 
 int main() {
 	Setup cfg = init();
+	int tick = 0;
+
 }
