@@ -3,11 +3,11 @@
 #include<vector>
 #include<array>
 #include<algorithm>
+#include<map>
+#include<fstream>
+#include<cstdlib>
 #include"Âóµ±ÀÍ.h"
 
-Setup init() {
-
-}
 
 int main() {
 	Setup cfg = init();
