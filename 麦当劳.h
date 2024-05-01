@@ -45,6 +45,52 @@ public:
 	}
 };
 
+class Working {
+public:
+	static vector<Combo> ComboLUT;
+	vector<int>requirements;
+	int time;
+	static int foodType;
+	Working(const Order& d){
+		time = d.seconds;
+		requirements.resize(foodType);
+		if (d.type) {
+			for (int t : ComboLUT[d.num].component)requirements[t] = 1;
+		}
+		else {
+			requirements[d.num] = 1;
+		}
+	}
+};
+
+Order orderInterpreter(const string& line, const vector<Combo>& ComboLUT, const vector<Food>& FoodLUT) {
+	istringstream iss(line);
+	int time;
+	string content;
+	iss >> time >> content;
+	Order neworder;
+	neworder.seconds = time;
+	int num = 0;
+	for (const auto& a : ComboLUT) {
+		if (content == a.name) {
+			neworder.type = 1;
+			neworder.num = num;
+			return neworder;
+		}
+		num++;
+	}
+	num = 0;
+	for (const auto& a : FoodLUT) {
+		if (content == a.name) {
+			neworder.type = 0;
+			neworder.num = num;
+			return neworder;
+		}
+		num++;
+	}
+	return neworder;
+}
+
 Setup init() {
 	Setup cfg;
 	ifstream menu("dict.dic");
@@ -112,33 +158,7 @@ Setup init() {
 	operation.close();
 	return cfg;
 }
-Order orderInterpreter(const string& line, const vector<Combo>& ComboLUT, const vector<Food>& FoodLUT) {
-	istringstream iss(line);
-	int time;
-	string content;
-	iss >> time >> content;
-	Order neworder;
-	neworder.seconds = time;
-	int num = 0;
-	for (const auto& a : ComboLUT) {
-		if (content == a.name) {
-			neworder.type = 1;
-			neworder.num = num;
-			return neworder;
-		}
-		num++;
-	}
-	num = 0;
-	for (const auto& a : FoodLUT) {
-		if (content == a.name) {
-			neworder.type = 0;
-			neworder.num = num;
-			return neworder;
-		}
-		num++;
-	}
-	return neworder;
-}
+
 
 int mapCombo(const string& input, const vector<Combo>& ComboLUT) {
 	int cur = 0;
@@ -169,11 +189,30 @@ void Cookupdate(vector<Food>&foodindex, int tick) {
 	static vector<int>CookingStatus;
 	CookingStatus.resize(foodindex.size());
 	for (int i = 0; i < foodindex.size(); i++) {
-		if (tick == 0) {
+		if (tick == 25199) {
 			CookingStatus[i] = foodindex[i].worktime;
+			foodindex[i].storage = 0;
 		}
 		if(foodindex[i].storage<foodindex[i].capacity&&CookingStatus[i]==0)CookingStatus[i] = foodindex[i].worktime;
 		if (CookingStatus[i] == 1)foodindex[i].storage++;
 		CookingStatus[i]--;
 	}
+}
+void acceptor(bool en,int time,const vector<Order>&all,vector<Working>&jobs,vector<int>&finish){
+	static int orderSeq = 0;
+	if (time = all[orderSeq].seconds) {
+		if (!en) {
+		finish[orderSeq] = -1;
+		orderSeq++;
+		return;
+		}
+		else {
+			jobs.push_back(Working(all[orderSeq]));
+			orderSeq++;
+			return;
+		}
+	}
+}
+vector<int> cater() {
+
 }
