@@ -161,7 +161,7 @@ int main(int argc, char** argv){
     input=fopen("input.txt", "r");
     output=fopen("output.txt", "a");
     dictRead(dict);
-    printf("%s %s", combo[1].name, food[combo[4].foodIndex[2]].name);
+    inputRead(input);
     fclose(dict);
     fclose(input);
     fclose(output);
