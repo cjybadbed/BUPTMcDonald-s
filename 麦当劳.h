@@ -47,15 +47,17 @@ public:
 
 class Working {
 public:
-	static vector<Combo> ComboLUT;
+	
 	vector<int>requirements;
 	int time;
-	static int foodType;
-	Working(const Order& d){
+	
+	Working(const Order& d,int foodType,const vector<Combo>&ComboLUT){
 		time = d.seconds;
 		requirements.resize(foodType);
 		if (d.type) {
-			for (int t : ComboLUT[d.num].component)requirements[t] = 1;
+			for (int t : ComboLUT[d.num].component) {
+				requirements[t] = 1;
+			}
 		}
 		else {
 			requirements[d.num] = 1;
@@ -63,13 +65,15 @@ public:
 	}
 };
 
+int TimeProcess(const string& T);
+
 Order orderInterpreter(const string& line, const vector<Combo>& ComboLUT, const vector<Food>& FoodLUT) {
 	istringstream iss(line);
-	int time;
+	string time;
 	string content;
 	iss >> time >> content;
 	Order neworder;
-	neworder.seconds = time;
+	neworder.seconds = TimeProcess(time);
 	int num = 0;
 	for (const auto& a : ComboLUT) {
 		if (content == a.name) {
@@ -90,7 +94,6 @@ Order orderInterpreter(const string& line, const vector<Combo>& ComboLUT, const 
 	}
 	return neworder;
 }
-
 Setup init() {
 	Setup cfg;
 	ifstream menu("dict.dic");
@@ -158,8 +161,6 @@ Setup init() {
 	operation.close();
 	return cfg;
 }
-
-
 int mapCombo(const string& input, const vector<Combo>& ComboLUT) {
 	int cur = 0;
 	for (const Combo& f : ComboLUT) {
@@ -169,7 +170,8 @@ int mapCombo(const string& input, const vector<Combo>& ComboLUT) {
 	return -1;
 }
 int TimeProcess(const string& T) {
-	return ((int)T[0]) * 36000 + ((int)T[1]) * 3600 + ((int)T[3]) * 600 + ((int)T[4]) * 60 + ((int)T[5]) * 10 + (int)T[6];
+	int out = (T[0]-'0') * 36000 + (T[1]-'0') * 3600 + (T[3]-'0') * 600 + (T[4]-'0') * 60 + (T[6]-'0') * 10 + T[7] - '0';
+	return out;
 }
 string convertTime(int t) {//
 	if (t == -1) {
@@ -198,7 +200,7 @@ void Cookupdate(vector<Food>&foodindex, int tick) {
 		CookingStatus[i]--;
 	}
 }
-void acceptor(bool en,int time,const vector<Order>&all,vector<Working>&jobs,vector<int>&finish){
+void acceptor(bool en,int time,const vector<Order>&all,vector<Working>&jobs,vector<int>&finish,int foodnum,const vector<Combo>&cbs){
 	static int orderSeq = 0;
 	if (time = all[orderSeq].seconds) {
 		if (!en) {
@@ -207,12 +209,38 @@ void acceptor(bool en,int time,const vector<Order>&all,vector<Working>&jobs,vect
 		return;
 		}
 		else {
-			jobs.push_back(Working(all[orderSeq]));
+			jobs.push_back(Working(all[orderSeq],foodnum,cbs));
 			orderSeq++;
 			return;
 		}
 	}
 }
-vector<int> cater() {
-
+void catering(int time,vector<Working>&jobs,vector<int>&target,vector<Food>&foods,const vector<Order>&ords,int foodnum) {
+	auto match = [&](const Working& jobs) {};
+	auto it = jobs.begin();
+	vector<int>delivered;
+	while (it != jobs.end()) {
+		bool fulfilled = true;
+		for (int i = 0; i < foodnum; i++) {
+			if (it->requirements[i] > foods[i].storage) {
+				fulfilled = false;
+				break;
+			}
+		}
+		if (fulfilled) {
+			for (int i = 0; i < foodnum; i++) {
+				foods[i].storage -= it->requirements[i];
+			}
+			for (int i = 0; i < ords.size(); i++) {
+				if (ords[i].seconds == it->time) {
+					target[i] = time;
+					break;
+				}
+			}
+			it = jobs.erase(it);
+		}
+		else {
+			it++;
+		}
+	}
 }
