@@ -93,6 +93,20 @@ void orderRead(FILE* input, int i, struct ORDER* order){
     }
 }
 
+int cmp(const void* a, const void* b){
+    struct ORDER* orderA=*((struct ORDER*)a);
+    struct ORDER* orderB=*((struct ORDER*)b);
+    int outA=orderA->out, outB=orderB->out;
+    return (outA<outB)-(outA>outB);
+}
+
+int w2thBigSec(struct ORDER* order, int i, int w2){
+    struct ORDER** orderPtr=(struct ORDER**)malloc(i*sizeof(struct ORDER*));
+    for(int j=0;j<=i;j++) *(orderPtr[j])=order[j];
+    qsort(orderPtr, i, sizeof(struct ORDER*), cmp);
+    return orderPtr[w2]->out;
+}
+
 void orderHandle(int w1, int w2, int i, int* curCloseSec, int* curOpenSec, struct ORDER* order){
     int afterInSecCount=0, expectedOut=0;
     bool immediatelyComplete=true;
@@ -101,11 +115,18 @@ void orderHandle(int w1, int w2, int i, int* curCloseSec, int* curOpenSec, struc
         break;
     }
     if(immediatelyComplete){
-        int expectedOut;
-        for(int j=0;j<20;j++) food[order[i].foodIndex[j]].progress+=food[order[i].foodIndex[j]].time;
-        //TODO
+        expectedOut=order[i].in;
+        for(int j=0;j<order[i].count;j++) food[order[i].foodIndex[j]].progress+=food[order[i].foodIndex[j]].time;
     } else{
-        //TODO
+        if(order[i].in>*curCloseSec&&order[i].in<*curOpenSec){
+            order[i].out=-1;
+            return;
+        }
+        for(int j=0;j<i;j++) if(order[j].out>order[i].in) afterInSecCount++;
+        if(afterInSecCount>=(w1-1)){
+            *curCloseSec=order[i].in;
+            *curOpenSec=1+w2thBigSec(*order, i);
+        }
     }
 }
 
