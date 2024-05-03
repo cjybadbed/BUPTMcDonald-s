@@ -8,7 +8,7 @@
 
 struct FOOD{
     char name[30];
-    int cap, time, progress;
+    int cap, time, captime;  //captime is when the storage limit is met.
 }food[100];
 
 struct COMBO{
@@ -23,18 +23,23 @@ struct ORDER{
     int in, out;
 };
 
+typedef struct FOOD FOOD;
+typedef struct COMBO COMBO;
+typedef struct ORDER ORDER;
+
 FILE* dict;
 FILE* input;
 FILE* output;
 
-int foodCount, comboCount;
+int foodCount, comboCount, orderCount;
 
+static ORDER* order;
 
 void secPrint(int sec, FILE* output){
     int hour=7+(sec-sec%3600)/3600;
     sec%=3600;
     int min=(sec-sec%60)/60;
-    int sec=sec%60;
+    sec%=60;
     fprintf(output, "%d:%d:%d\n", hour, min, sec);
 }
 
@@ -77,77 +82,90 @@ void dictRead(FILE* dict){
     }
 }
 
-void orderRead(FILE* input, int i, struct ORDER* order){
-    order[i].foodIndex={0};
-    order[i].out=-1;
-    char time[9], name[30];
-    fscanf(input, "%8s", &time);
-    order[i].in=time2sec(time);
-    fscanf(input, "%s", name);
-    if(searchInFood(name)!=-1){
-        order[i].foodIndex[0]=searchInFood(name);
-        order[i].count=1;
-    } else{
-        memcpy(order[i].foodIndex, combo[searchInCombo(name)].foodIndex, sizeof(order[i].foodIndex));
-        order[i].count=combo[searchInCombo(name)].count;
+void orderRead(FILE* input){
+    for(int i=0;i<orderCount;i++){
+        for(int j=0;j<20;j++) order[i].foodIndex[j]=-1;
+        order[i].out=0;
+        char time[9]={0}, orderName[30]={0};
+        fscanf(input, "%s %s", time, orderName);
+        order[i].in=time2sec(time);
+        int temp=searchInFood(orderName);
+        if(temp!=-1){
+            order[i].count=1;
+            order[i].foodIndex[0]=temp;
+        } else{
+            temp=searchInCombo(orderName);
+            for(int j=0;j<combo[temp].count;j++) order[i].foodIndex[j]=combo[temp].foodIndex[j];
+            order[i].count=combo[temp].count;
+        }
     }
 }
 
 int cmp(const void* a, const void* b){
-    struct ORDER* orderA=*((struct ORDER*)a);
-    struct ORDER* orderB=*((struct ORDER*)b);
+    struct ORDER* orderA=(struct ORDER*)a;
+    struct ORDER* orderB=(struct ORDER*)b;
     int outA=orderA->out, outB=orderB->out;
     return (outA<outB)-(outA>outB);
 }
 
-int w2thBigSec(struct ORDER* order, int i, int w2){
+int w2thBigSec(int i, int w2){
     struct ORDER** orderPtr=(struct ORDER**)malloc(i*sizeof(struct ORDER*));
-    for(int j=0;j<=i;j++) *(orderPtr[j])=order[j];
+    for(int j=0;j<=i;j++) orderPtr[j]=&(order[j]);
     qsort(orderPtr, i, sizeof(struct ORDER*), cmp);
-    return orderPtr[w2]->out;
+    return orderPtr[w2-1]->out;
 }
 
-void orderHandle(int w1, int w2, int i, int* curCloseSec, int* curOpenSec, struct ORDER* order){
-    int afterInSecCount=0, expectedOut=0;
-    bool immediatelyComplete=true;
-    for(int j=0;j<order[i].count;j++) if((order[i].in-food[order[i].foodIndex[j]].progress)<food[order[i].foodIndex[j]].time){
-        immediatelyComplete=false;
-        break;
+bool isImmediateComplete(int i){
+    for(int j=0;j<order[i].count;j++){
+        FOOD* curr=food[order[i].foodIndex[j]];
+        if(curr->captime-(curr->cap-1)*curr->time>order[i].in) return false;
     }
-    if(immediatelyComplete){
-        expectedOut=order[i].in;
-        for(int j=0;j<order[i].count;j++) food[order[i].foodIndex[j]].progress+=food[order[i].foodIndex[j]].time;
-    } else{
-        if(order[i].in>*curCloseSec&&order[i].in<*curOpenSec){
+    return true;
+}
+
+void orderHandle(int w1, int w2, int* curCloseSec, int* curOpenSec){  //curOpenSec=w2orderOutSec+1
+    for(int i=0;i<orderCount;i++){
+        if(order[i].in>curCloseSec&&order[i].in<curOpenSec&&!isImmediateComplete(i)){
             order[i].out=-1;
-            return;
+            continue;
         }
-        for(int j=0;j<i;j++) if(order[j].out>order[i].in) afterInSecCount++;
-        if(afterInSecCount>=(w1-1)){
+        if(isImmediateComplete(i)){
+            order[i].out=order[i].in;
+            continue;
+        }
+        int afterCount=0;  //count orders that complete after current order.in, namely currently unfinished orders
+        for(int j=0;j<i;j++) if(order[j].out>order[i].in) afterCount++;
+        int out=0;
+        for(int j=0;j<order[i].count;j++){
+            FOOD* curr=food[order[i].foodIndex[j]];
+            int n=curr->captime-(curr->cap-1)*curr->time; //n is the first one's completed second.
+            if(n>order[i].in&&out<n) out=n;
+            if(order[i].in<=curr->captime) curr->captime+=curr->time;
+            else curr->captime=order[i].in+curr->time;
+            order[i].out=out;
+        }
+        if(afterCount+1==w1){
             *curCloseSec=order[i].in;
-            *curOpenSec=1+w2thBigSec(*order, i);
+            *curOpenSec=w2thBigSec(i, w2);
         }
     }
 }
 
-void orderOutput(FILE* output, int i, struct ORDER* order){
+void orderOutput(FILE* output, int i){
     if(order[i].out!=-1) secPrint(order[i].out, output);
-    else fprintf(output, "Fail\n")
+    else fprintf(output, "Fail\n");
 }
 
 void inputRead(FILE* input){
-    int orderCount, w1, w2;
+    int w1, w2;
     fscanf(input, "%d%d%d", &orderCount, &w1, &w2);
-    for(int i=0;i<foodCount;i++) fscanf(dict, "%d", food[i].time);
-    for(int i=0;i<foodCount;i++) fscanf(dict, "%d", food[i].cap);
-    struct ORDER* order=(struct ORDER*)malloc(orderCount*sizeof(struct ORDER));
-    int *curCloseSec=-1, *curOpenSec=-1;
-    for(int i=0;i<orderCount;i++){
-        orderRead(input, i, *order);
-        orderHandle(w1, w2, i, *curCloseSec, *curOpenSec, *order);
-        orderOutput(output, i, *order);
-    }
-    free(order);
+    for(int i=0;i<foodCount;i++) fscanf(input, "%d", &(food[i].time));
+    for(int i=0;i<foodCount;i++) fscanf(input, "%d", &(food[i].cap));
+    order=(ORDER*)malloc(orderCount*sizeof(ORDER));
+    int closeSec=-1, openSec=-1;
+    orderRead(input);
+    orderHandle(w1, w2, &closeSec, &openSec);
+    orderOutput(output);
 }
 
 int main(int argc, char** argv){
@@ -155,7 +173,7 @@ int main(int argc, char** argv){
         memset(combo[i].name, 0, sizeof(combo[i].name));
         memset(combo[i].foodIndex, -1, sizeof(combo[i].foodIndex));
         memset(food[i].name, 0, sizeof(food[i].name));
-        memset(food[i].progress, 0, sizeof(food[i].progress));
+        food[i].captime=food[i].cap*food[i].time;
     }
     dict=fopen("dict.dic", "r");
     input=fopen("input.txt", "r");
@@ -165,5 +183,6 @@ int main(int argc, char** argv){
     fclose(dict);
     fclose(input);
     fclose(output);
+    free(order);
     return 0;
 }
