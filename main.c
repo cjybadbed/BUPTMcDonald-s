@@ -40,7 +40,7 @@ void secPrint(int sec, FILE* output){
     sec%=3600;
     int min=(sec-sec%60)/60;
     sec%=60;
-    fprintf(output, "%d:%d:%d\n", hour, min, sec);
+    fprintf(output, "%02d:%02d:%02d\n", hour, min, sec);
 }
 
 int time2sec(char time[9]){
@@ -102,14 +102,14 @@ void orderRead(FILE* input){
 }
 
 int cmp(const void* a, const void* b){
-    struct ORDER* orderA=(struct ORDER*)a;
-    struct ORDER* orderB=(struct ORDER*)b;
-    int outA=orderA->out, outB=orderB->out;
-    return (outA<outB)-(outA>outB);
+    const ORDER* orderA=(const ORDER*)a;
+    const ORDER* orderB=(const ORDER*)b;
+    const int outA=orderA->out, outB=orderB->out;
+    return (outA>outB)-(outA<outB);
 }
 
 int w2thBigSec(int i, int w2){
-    struct ORDER** orderPtr=(struct ORDER**)malloc(i*sizeof(struct ORDER*));
+    ORDER** orderPtr=(ORDER**)malloc((i+1)*sizeof(ORDER*));
     for(int j=0;j<=i;j++) orderPtr[j]=&(order[j]);
     qsort(orderPtr, i, sizeof(struct ORDER*), cmp);
     return orderPtr[w2-1]->out;
@@ -117,43 +117,50 @@ int w2thBigSec(int i, int w2){
 
 bool isImmediateComplete(int i){
     for(int j=0;j<order[i].count;j++){
-        FOOD* curr=food[order[i].foodIndex[j]];
-        if(curr->captime-(curr->cap-1)*curr->time>order[i].in) return false;
+        FOOD* curr=&food[order[i].foodIndex[j]];
+        if(curr->captime-(curr->cap-1)*curr->time>=order[i].in) return false;
     }
     return true;
 }
 
 void orderHandle(int w1, int w2, int* curCloseSec, int* curOpenSec){  //curOpenSec=w2orderOutSec+1
     for(int i=0;i<orderCount;i++){
-        if(order[i].in>curCloseSec&&order[i].in<curOpenSec&&!isImmediateComplete(i)){
+        if(order[i].in>*curCloseSec&&order[i].in<*curOpenSec&&!isImmediateComplete(i)){
             order[i].out=-1;
             continue;
         }
         if(isImmediateComplete(i)){
             order[i].out=order[i].in;
+            for(int j=0;j<order[i].count;j++){
+                FOOD* curr=&food[order[i].foodIndex[j]];
+                if(order[i].in<=curr->captime) curr->captime+=curr->time;
+                else curr->captime=order[i].in+curr->time;
+            }
             continue;
         }
         int afterCount=0;  //count orders that complete after current order.in, namely currently unfinished orders
         for(int j=0;j<i;j++) if(order[j].out>order[i].in) afterCount++;
         int out=0;
         for(int j=0;j<order[i].count;j++){
-            FOOD* curr=food[order[i].foodIndex[j]];
+            FOOD* curr=&food[order[i].foodIndex[j]];
             int n=curr->captime-(curr->cap-1)*curr->time; //n is the first one's completed second.
-            if(n>order[i].in&&out<n) out=n;
+            if(n>=order[i].in&&out<n) out=n;
             if(order[i].in<=curr->captime) curr->captime+=curr->time;
             else curr->captime=order[i].in+curr->time;
             order[i].out=out;
         }
         if(afterCount+1==w1){
             *curCloseSec=order[i].in;
-            *curOpenSec=w2thBigSec(i, w2);
+            *curOpenSec=w2thBigSec(i, w2)+1;
         }
     }
 }
 
-void orderOutput(FILE* output, int i){
-    if(order[i].out!=-1) secPrint(order[i].out, output);
-    else fprintf(output, "Fail\n");
+void orderOutput(FILE* output){
+    for(int i=0;i<orderCount;i++){
+        if(order[i].out!=-1) secPrint(order[i].out, output);
+        else fprintf(output, "Fail\n");
+    }
 }
 
 void inputRead(FILE* input){
@@ -161,6 +168,7 @@ void inputRead(FILE* input){
     fscanf(input, "%d%d%d", &orderCount, &w1, &w2);
     for(int i=0;i<foodCount;i++) fscanf(input, "%d", &(food[i].time));
     for(int i=0;i<foodCount;i++) fscanf(input, "%d", &(food[i].cap));
+    for(int i=0;i<foodCount;i++) food[i].captime=food[i].cap*food[i].time;
     order=(ORDER*)malloc(orderCount*sizeof(ORDER));
     int closeSec=-1, openSec=-1;
     orderRead(input);
@@ -173,7 +181,6 @@ int main(int argc, char** argv){
         memset(combo[i].name, 0, sizeof(combo[i].name));
         memset(combo[i].foodIndex, -1, sizeof(combo[i].foodIndex));
         memset(food[i].name, 0, sizeof(food[i].name));
-        food[i].captime=food[i].cap*food[i].time;
     }
     dict=fopen("dict.dic", "r");
     input=fopen("input.txt", "r");
