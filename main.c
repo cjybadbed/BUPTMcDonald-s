@@ -101,6 +101,7 @@ void orderRead(FILE* input){
     }
 }
 
+/*
 int cmp(const void* a, const void* b){
     const ORDER* orderA=(const ORDER*)a;
     const ORDER* orderB=(const ORDER*)b;
@@ -114,6 +115,18 @@ int w2thBigSec(int i, int w2){
     qsort(orderPtr, i, sizeof(struct ORDER*), cmp);
     return orderPtr[w2-1]->out;
 }
+*/
+
+int cmp(const void* a, const void* b){
+    return (*(int*)a>*(int*)b)-(*(int*)a<*(int*)b);
+}
+
+int w2thBigSec(int i, int w2){
+    int* sec=(int*)malloc((i-1)*sizeof(int));
+    for(int j=0;j<i-1;j++) sec[j]=order[i].out;
+    qsort(sec, i-1, sizeof(int), cmp);
+    return sec[w2-1];
+}
 
 bool isImmediateComplete(int i){
     for(int j=0;j<order[i].count;j++){
@@ -125,7 +138,7 @@ bool isImmediateComplete(int i){
 
 void orderHandle(int w1, int w2, int* curCloseSec, int* curOpenSec){  //curOpenSec=w2orderOutSec+1
     for(int i=0;i<orderCount;i++){
-        if(order[i].in>*curCloseSec&&order[i].in<*curOpenSec&&!isImmediateComplete(i)){
+        if(order[i].in>*curCloseSec&&order[i].in<*curOpenSec){
             order[i].out=-1;
             continue;
         }
@@ -149,7 +162,7 @@ void orderHandle(int w1, int w2, int* curCloseSec, int* curOpenSec){  //curOpenS
             else curr->captime=order[i].in+curr->time;
             order[i].out=out;
         }
-        if(afterCount+1==w1){
+        if(afterCount>=w1){
             *curCloseSec=order[i].in;
             *curOpenSec=w2thBigSec(i, w2)+1;
         }
@@ -173,7 +186,7 @@ void inputRead(FILE* input){
     int closeSec=-1, openSec=-1;
     orderRead(input);
     orderHandle(w1, w2, &closeSec, &openSec);
-    orderOutput(output);
+    orderOutput(stdout);
 }
 
 int main(int argc, char** argv){
