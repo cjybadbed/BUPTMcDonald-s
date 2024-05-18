@@ -5,7 +5,6 @@
 #define true 1
 #define false 0
 
-
 struct FOOD{
     char name[30];
     int cap, time, captime;  //captime is when the storage limit is met.
@@ -31,7 +30,7 @@ FILE* dict;
 FILE* input;
 FILE* output;
 
-int foodCount, comboCount, orderCount;
+static int foodCount, comboCount, orderCount, w1, w2;
 
 static ORDER* order;
 
@@ -66,8 +65,12 @@ int searchInCombo(char* name){
 }
 
 void dictRead(FILE* dict){
-    fscanf(dict, "%d%d\foodCount", &foodCount, &comboCount);
+    fscanf(dict, "%d%d", &foodCount, &comboCount);
     for(int i=0;i<foodCount;i++) fscanf(dict, "%s", food[i].name);
+    for(int i=0;i<foodCount;i++) fscanf(dict, "%d", &(food[i].time));
+    for(int i=0;i<foodCount;i++) fscanf(dict, "%d", &(food[i].cap));
+    fscanf(dict, "%d%d", &w1, &w2);
+    for(int i=0;i<foodCount;i++) food[i].captime=food[i].cap*food[i].time;
     for(int i=0;i<comboCount;i++){
         fscanf(dict, "%s", combo[i].name);
         combo[i].count=0;
@@ -118,13 +121,13 @@ int w2thBigSec(int i, int w2){
 */
 
 int cmp(const void* a, const void* b){
-    return (*(int*)a>*(int*)b)-(*(int*)a<*(int*)b);
+    return (*(int*)a<*(int*)b)-(*(int*)a>*(int*)b);
 }
 
-int w2thBigSec(int i, int w2){
-    int* sec=(int*)malloc((i-1)*sizeof(int));
-    for(int j=0;j<i-1;j++) sec[j]=order[i].out;
-    qsort(sec, i-1, sizeof(int), cmp);
+int w2thBigSec(int i){
+    int* sec=(int*)malloc(i*sizeof(int));
+    for(int j=0;j<i;j++) sec[j]=order[j].out;
+    qsort(sec, i, sizeof(int), cmp);
     return sec[w2-1];
 }
 
@@ -136,9 +139,10 @@ bool isImmediateComplete(int i){
     return true;
 }
 
-void orderHandle(int w1, int w2, int* curCloseSec, int* curOpenSec){  //curOpenSec=w2orderOutSec+1
+void orderHandle(){  //curOpenSec=w2orderOutSec+1
+    int closeSec=-1, openSec=-1;
     for(int i=0;i<orderCount;i++){
-        if(order[i].in>*curCloseSec&&order[i].in<*curOpenSec){
+        if(order[i].in>closeSec&&order[i].in<openSec){
             order[i].out=-1;
             continue;
         }
@@ -151,8 +155,6 @@ void orderHandle(int w1, int w2, int* curCloseSec, int* curOpenSec){  //curOpenS
             }
             continue;
         }
-        int afterCount=0;  //count orders that complete after current order.in, namely currently unfinished orders
-        for(int j=0;j<i;j++) if(order[j].out>order[i].in) afterCount++;
         int out=0;
         for(int j=0;j<order[i].count;j++){
             FOOD* curr=&food[order[i].foodIndex[j]];
@@ -162,9 +164,11 @@ void orderHandle(int w1, int w2, int* curCloseSec, int* curOpenSec){  //curOpenS
             else curr->captime=order[i].in+curr->time;
             order[i].out=out;
         }
-        if(afterCount>=w1){
-            *curCloseSec=order[i].in;
-            *curOpenSec=w2thBigSec(i, w2)+1;
+        int afterCount=0;  //count orders that complete after current order.in, namely currently unfinished orders
+        for(int j=0;j<i;j++) if(order[j].out>order[i].in) afterCount++;
+        if(afterCount=w1){
+            closeSec=order[i].in;
+            openSec=w2thBigSec(i)+1;
         }
     }
 }
@@ -177,15 +181,10 @@ void orderOutput(FILE* output){
 }
 
 void inputRead(FILE* input){
-    int w1, w2;
-    fscanf(input, "%d%d%d", &orderCount, &w1, &w2);
-    for(int i=0;i<foodCount;i++) fscanf(input, "%d", &(food[i].time));
-    for(int i=0;i<foodCount;i++) fscanf(input, "%d", &(food[i].cap));
-    for(int i=0;i<foodCount;i++) food[i].captime=food[i].cap*food[i].time;
+    fscanf(input, "%d", &orderCount);
     order=(ORDER*)malloc(orderCount*sizeof(ORDER));
-    int closeSec=-1, openSec=-1;
     orderRead(input);
-    orderHandle(w1, w2, &closeSec, &openSec);
+    orderHandle();
     orderOutput(stdout);
 }
 
@@ -196,8 +195,8 @@ int main(int argc, char** argv){
         memset(food[i].name, 0, sizeof(food[i].name));
     }
     dict=fopen("dict.dic", "r");
-    input=fopen("input.txt", "r");
-    output=fopen("output.txt", "a");
+    input=fopen("input1.txt", "r");
+    output=fopen("output1.txt", "a");
     dictRead(dict);
     inputRead(input);
     fclose(dict);
