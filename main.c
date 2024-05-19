@@ -6,12 +6,12 @@
 #define false 0
 
 struct FOOD{
-    char name[30];
+    char name[50];
     int cap, time, captime;  //captime is when the storage limit is met.
 }food[100];
 
 struct COMBO{
-    char name[30];
+    char name[50];
     int count;
     int foodIndex[20];
 }combo[100];
@@ -75,7 +75,7 @@ void dictRead(FILE* dict){
         fscanf(dict, "%s", combo[i].name);
         combo[i].count=0;
         for(;;combo[i].count++){
-            char name[30];
+            char name[50];
             fscanf(dict, "%s", name);
             combo[i].foodIndex[combo[i].count]=searchInFood(name);
             int c=fgetc(dict);
@@ -89,7 +89,7 @@ void orderRead(FILE* input){
     for(int i=0;i<orderCount;i++){
         for(int j=0;j<20;j++) order[i].foodIndex[j]=-1;
         order[i].out=0;
-        char time[9]={0}, orderName[30]={0};
+        char time[9]={0}, orderName[50]={0};
         fscanf(input, "%s %s", time, orderName);
         order[i].in=time2sec(time);
         int temp=searchInFood(orderName);
