@@ -104,22 +104,6 @@ void orderRead(FILE* input){
     }
 }
 
-/*
-int cmp(const void* a, const void* b){
-    const ORDER* orderA=(const ORDER*)a;
-    const ORDER* orderB=(const ORDER*)b;
-    const int outA=orderA->out, outB=orderB->out;
-    return (outA>outB)-(outA<outB);
-}
-
-int w2thBigSec(int i, int w2){
-    ORDER** orderPtr=(ORDER**)malloc((i+1)*sizeof(ORDER*));
-    for(int j=0;j<=i;j++) orderPtr[j]=&(order[j]);
-    qsort(orderPtr, i, sizeof(struct ORDER*), cmp);
-    return orderPtr[w2-1]->out;
-}
-*/
-
 int cmp(const void* a, const void* b){
     return (*(int*)a<*(int*)b)-(*(int*)a>*(int*)b);
 }
