@@ -126,7 +126,7 @@ bool isImmediateComplete(int i){
 void orderHandle(){  //curOpenSec=w2orderOutSec+1
     int closeSec=-1, openSec=-1;
     for(int i=0;i<orderCount;i++){
-        if(order[i].in>closeSec&&order[i].in<openSec){
+        if((order[i].in>closeSec&&order[i].in<openSec)||order[i].in>time2sec("22:00:00")){
             order[i].out=-1;
             continue;
         }
