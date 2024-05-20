@@ -6,12 +6,12 @@
 #define false 0
 
 struct FOOD{
-    char name[50];
+    char name[51];
     int cap, time, captime;  //captime is when the storage limit is met.
 }food[100];
 
 struct COMBO{
-    char name[50];
+    char name[51];
     int count;
     int foodIndex[20];
 }combo[100];
@@ -79,8 +79,14 @@ void dictRead(FILE* dict){
             fscanf(dict, "%s", name);
             combo[i].foodIndex[combo[i].count]=searchInFood(name);
             int c=fgetc(dict);
-            if(c==13||c==10) break;
-            if(c==EOF) return;
+            if(c==13||c==10){
+                combo[i].count++;
+                break;
+            }
+            if(c==EOF){
+                combo[i].count++;
+                return;
+            }
         }
     }
 }
@@ -89,7 +95,7 @@ void orderRead(FILE* input){
     for(int i=0;i<orderCount;i++){
         for(int j=0;j<20;j++) order[i].foodIndex[j]=-1;
         order[i].out=0;
-        char time[9]={0}, orderName[50]={0};
+        char time[9]={0}, orderName[51]={0};
         fscanf(input, "%s %s", time, orderName);
         order[i].in=time2sec(time);
         int temp=searchInFood(orderName);
@@ -150,9 +156,9 @@ void orderHandle(){  //curOpenSec=w2orderOutSec+1
         }
         int afterCount=0;  //count orders that complete after current order.in, namely currently unfinished orders
         for(int j=0;j<i;j++) if(order[j].out>order[i].in) afterCount++;
-        if(afterCount=w1){
+        if(afterCount==w1){
             closeSec=order[i].in;
-            openSec=w2thBigSec(i)+1;
+            openSec=w2thBigSec(i+1)+1;
         }
     }
 }
@@ -164,12 +170,12 @@ void orderOutput(FILE* output){
     }
 }
 
-void inputRead(FILE* input){
+void inputRead(FILE* input, FILE* output){
     fscanf(input, "%d", &orderCount);
     order=(ORDER*)malloc(orderCount*sizeof(ORDER));
     orderRead(input);
     orderHandle();
-    orderOutput(stdout);
+    orderOutput(output);
 }
 
 int main(int argc, char** argv){
@@ -180,9 +186,10 @@ int main(int argc, char** argv){
     }
     dict=fopen("dict.dic", "r");
     input=fopen("input1.txt", "r");
-    output=fopen("output1.txt", "a");
+    input=stdin;
+    output=stdout;
     dictRead(dict);
-    inputRead(input);
+    inputRead(input, output);
     fclose(dict);
     fclose(input);
     fclose(output);
