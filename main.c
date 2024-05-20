@@ -114,7 +114,7 @@ int cmp(const void* a, const void* b){
     return (*(int*)a<*(int*)b)-(*(int*)a>*(int*)b);
 }
 
-int w2thBigSec(int i){
+int w2thBigSec(int i){ //too lazy to optimize further...
     int* sec=(int*)malloc(i*sizeof(int));
     for(int j=0;j<i;j++) sec[j]=order[j].out;
     qsort(sec, i, sizeof(int), cmp);
