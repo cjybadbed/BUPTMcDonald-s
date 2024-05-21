@@ -185,7 +185,8 @@ int main(int argc, char** argv){
         memset(food[i].name, 0, sizeof(food[i].name));
     }
     dict=fopen("dict.dic", "r");
-    input=fopen("input1.txt", "r");
+    input=fopen("input.txt", "r");
+    output=fopen("output.txt", "w+");
     input=stdin;
     output=stdout;
     dictRead(dict);
