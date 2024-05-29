@@ -1,5 +1,5 @@
 project('test1','c')
-gtkdep = dependency('gtk4')
+gtkdep = dependency('gtk4', version : '>=4.15.1')
 gnome=import('gnome')
 sourcefiles=files('graphics.c')
 executable('test1',sourcefiles,dependencies:gtkdep)
