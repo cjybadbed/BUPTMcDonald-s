@@ -6,37 +6,30 @@ COMBO combo[100];
 FILE* dict;
 FILE* input;
 FILE* output;
+FILE* nos;  //new order stream
 int foodCount, comboCount, orderCount, w1, w2;
+int closeSec=-1, openSec=-1;
 ORDER* order;
+GtkApplication *app;
 
-/*
-static int time;
 
-int get_time(){
-    //TODO
+guint get_time(){
+    guint sec=-1;
+    GtkWindow* window=GTK_WINDOW(g_list_first(gtk_application_get_windows(app))->data);
+    GtkWidget* grid_overall=gtk_window_get_child(window);
+    GtkWidget* time_label=gtk_grid_get_child_at(GTK_GRID(grid_overall), 0, 0);
+    char* time=(char*)gtk_label_get_text(GTK_LABEL(time_label));
+    sec=time2sec(time);
+    return sec;
 }
 
-ORDER* order_add(char* name){
-    ORDER* orderPtr=malloc(sizeof(ORDER));
-    for(int j=0;j<20;j++) orderPtr->foodIndex[j]=-1;
-    orderPtr->out=0;
-    orderPtr->in=getTime();
-    int temp=searchInFood(name);
-    if(temp!=-1){
-        order[i].count=1;
-        order[i].foodIndex[0]=temp;
-    } else{
-        temp=searchInCombo(name);
-        for(int j=0;j<combo[temp].count;j++) order[i].foodIndex[j]=combo[temp].foodIndex[j];
-        order[i].count=combo[temp].count;
-    }
-    return orderPtr;
-}
-*/
 static void clicked(GtkWidget* button){
     const gchar *name=gtk_button_get_label(GTK_BUTTON(button));
-    //order_add(name);
-    printf("%s", name);
+    fprintf(nos, "%s %s\n", sec2time(get_time()), name);
+    rewind(nos);
+    int i=singleOrderRead(nos);
+    ithOrderHandle(i);
+    //ithOrderHandle(i);
 }
 
 static void create_menu_buttons(GtkWidget *grid){
@@ -106,37 +99,67 @@ static void create_all(GtkWidget *grid){
     gtk_grid_attach(GTK_GRID(grid), menu_grid, 0, 1, 1, 4);
     create_menu_buttons(menu_grid);
 
-    GtkWidget* timeLabel=gtk_label_new(NULL);
-    gtk_widget_add_css_class(timeLabel, "timeLabel");
-    gtk_label_set_text(GTK_LABEL(timeLabel), "07:00:00"); //TODO
+    GtkWidget* time_label=gtk_label_new(NULL);
+    gtk_widget_add_css_class(time_label, "time_label");
+    gtk_label_set_text(GTK_LABEL(time_label), sec2time(0)); //TODO
     GtkCssProvider *cssProvider=gtk_css_provider_new();
-    gtk_css_provider_load_from_string(cssProvider, ".timeLabel { font-size: 40px; }");
+    gtk_css_provider_load_from_string(cssProvider, ".time_label { font-size: 40px; }");
     gtk_style_context_add_provider_for_display(gtk_widget_get_display(grid), GTK_STYLE_PROVIDER(cssProvider), GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
     //char* time=get_time();
-    //gtk_label_set_text(GTK_LABEL(timeLabel), time);
-    gtk_grid_attach(GTK_GRID(grid), timeLabel, 0, 0, 2, 1);
+    //gtk_label_set_text(GTK_LABEL(time_label), time);
+    gtk_grid_attach(GTK_GRID(grid), time_label, 0, 0, 2, 1);
 
-    GtkWidget* scale=gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 1, 10, 0.1);
-    gtk_grid_attach(GTK_GRID(grid), scale, 3, 0, 1, 1);
+    GtkWidget* scale=gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 1, 100, 1);
+    gtk_range_set_value(GTK_RANGE(scale), 1);
+    gtk_grid_attach(GTK_GRID(grid), scale, 3, 0, 2, 1);
     gtk_widget_set_size_request(scale, 100, -1);
 
     order_pane_create(grid);
 }
 
-static void app_startup(GApplication* app){
-    GtkWidget *window=gtk_application_window_new(GTK_APPLICATION(app));
+static void app_startup(){
+    GtkWidget *window=gtk_application_window_new(app);
     gtk_window_set_default_size(GTK_WINDOW(window), 600, 400);
     GtkWidget *grid=gtk_grid_new();
     gtk_window_set_child(GTK_WINDOW(window), grid);
     create_all(grid);
     gtk_window_present(GTK_WINDOW(window));
+
+}
+
+gboolean ten_ms_handler(GtkWidget* grid_overall){ //TODO
+    if(get_time()>=time2sec("23:59:59")){
+        GtkWidget* window=gtk_widget_get_parent(grid_overall);
+        GtkAlertDialog* day_end_alert=gtk_alert_dialog_new("You've reached the end of the day!");
+        gtk_alert_dialog_show(day_end_alert, GTK_WINDOW(window));
+        return FALSE;
+    }
+    GtkWidget* scale=gtk_grid_get_child_at(GTK_GRID(grid_overall), 3, 0);
+    GtkWidget* time_label=gtk_grid_get_child_at(GTK_GRID(grid_overall), 0, 0);
+    guint time_factor=(guint)gtk_range_get_value(GTK_RANGE(scale));
+    static guint ms_accumulated=0;
+    ms_accumulated+=10*time_factor;
+    if(ms_accumulated>=1000){
+        gtk_label_set_text(GTK_LABEL(time_label), sec2time(get_time()+ms_accumulated/1000));
+        //progress_refresh();
+        //order_refresh();
+        ms_accumulated-=1000;
+    } else return TRUE;
+    return TRUE;
+}
+
+static void app_activate(){
+    GtkWindow* window=GTK_WINDOW(g_list_first(gtk_application_get_windows(app))->data);
+    GtkWidget* grid_overall=gtk_window_get_child(window);
+    g_timeout_add(10, G_SOURCE_FUNC(ten_ms_handler), grid_overall);
+    printf("success\n");
 }
 
 int main(int argc, char** argv){
     fileOpen();
-    GtkApplication *app;
-    app=gtk_application_new("com.example.BUPTMcDonalds", G_APPLICATION_DEFAULT_FLAGS);
+    app=gtk_application_new("com.cjybadbed.BUPTMcDonalds", G_APPLICATION_DEFAULT_FLAGS);
     g_signal_connect(app, "startup", G_CALLBACK(app_startup), NULL);
+    g_signal_connect(app, "activate", G_CALLBACK(app_activate), NULL);
     int status=g_application_run(G_APPLICATION(app), argc, argv);
     g_object_unref(app);
     fileClose();

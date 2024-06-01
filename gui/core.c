@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <gtk/gtk.h>
+#define MAX_MANUAL_COUNT 100
 
 struct FOOD{
     char name[51];
@@ -32,7 +33,7 @@ extern FILE* dict;
 extern FILE* input;
 extern FILE* output;
 
-extern int foodCount, comboCount, orderCount, w1, w2;
+extern int foodCount, comboCount, orderCount, w1, w2, closeSec, openSec;
 
 extern ORDER* order;
 
@@ -50,6 +51,16 @@ int time2sec(char time[9]){
         sec=(time[6]-'0')*10+time[7]-'0';
     int foodCount=hour*3600+min*60+sec;
     return foodCount;
+}
+
+char* sec2time(int sec){
+    int hour=7+(sec-sec%3600)/3600;
+    sec%=3600;
+    int min=(sec-sec%60)/60;
+    sec%=60;
+    static char time[9];
+    sprintf(time, "%02d:%02d:%02d", hour, min, sec);
+    return time;
 }
 
 int searchInFood(char* name){
@@ -93,24 +104,25 @@ void dictRead(FILE* dict){
     }
 }
 
-void orderRead(FILE* input){
-    for(int i=0;i<orderCount;i++){
-        for(int j=0;j<20;j++) order[i].foodIndex[j]=-1;
-        order[i].out=0;
-        char time[9]={0}, orderName[51]={0};
-        fscanf(input, "%s %s", time, orderName);
-        strcpy(order[i].name, orderName);
-        order[i].in=time2sec(time);
-        int temp=searchInFood(orderName);
-        if(temp!=-1){
-            order[i].count=1;
-            order[i].foodIndex[0]=temp;
-        } else{
-            temp=searchInCombo(orderName);
-            for(int j=0;j<combo[temp].count;j++) order[i].foodIndex[j]=combo[temp].foodIndex[j];
-            order[i].count=combo[temp].count;
-        }
+int singleOrderRead(FILE* source){
+    static int i=0;
+    for(int j=0;j<20;j++) order[i].foodIndex[j]=-1;
+    order[i].out=0;
+    char time[9]={0}, orderName[51]={0};
+    fscanf(source, "%s %s", time, orderName);
+    strcpy(order[i].name, orderName);
+    order[i].in=time2sec(time);
+    int temp=searchInFood(orderName);
+    if(temp!=-1){
+        order[i].count=1;
+        order[i].foodIndex[0]=temp;
+    } else{
+        temp=searchInCombo(orderName);
+        for(int j=0;j<combo[temp].count;j++) order[i].foodIndex[j]=combo[temp].foodIndex[j];
+        order[i].count=combo[temp].count;
     }
+    if(fgetc(source)==EOF) return -1;
+    return i++;
 }
 
 int cmp(const void* a, const void* b){
@@ -121,7 +133,9 @@ int w2thBigSec(int i){ //too lazy to optimize further...
     int* sec=(int*)malloc(i*sizeof(int));
     for(int j=0;j<i;j++) sec[j]=order[j].out;
     qsort(sec, i, sizeof(int), cmp);
-    return sec[w2-1];
+    int result=sec[w2-1];
+    free(sec);
+    return result;
 }
 
 bool isImmediateComplete(int i){
@@ -132,8 +146,8 @@ bool isImmediateComplete(int i){
     return true;
 }
 
-void ithOrderHandle(int i, int* closeSec, int* openSec){  //curOpenSec=w2orderOutSec+1
-    if((order[i].in>*closeSec&&order[i].in<*openSec)||order[i].in>time2sec("22:00:00")){
+void ithOrderHandle(int i){  //curOpenSec=w2orderOutSec+1
+    if((order[i].in>closeSec&&order[i].in<openSec)||order[i].in>time2sec("22:00:00")){
         order[i].out=-1;
         return;
     }
@@ -158,14 +172,13 @@ void ithOrderHandle(int i, int* closeSec, int* openSec){  //curOpenSec=w2orderOu
     int afterCount=0;  //count orders that complete after current order.in, namely currently unfinished orders
     for(int j=0;j<i;j++) if(order[j].out>order[i].in) afterCount++;
     if(afterCount==w1){
-        *closeSec=order[i].in;
-        *openSec=w2thBigSec(i+1)+1;
+        closeSec=order[i].in;
+        openSec=w2thBigSec(i+1)+1;
     }
 }
 
 void orderHandle(){
-    int closeSec=-1, openSec=-1;
-    for(int i=0;i<orderCount;i++) ithOrderHandle(i, &closeSec, &openSec);
+    for(int i=0;i<orderCount;i++) ithOrderHandle(i);
     return;
 }
 
@@ -178,8 +191,8 @@ void orderOutput(FILE* output){
 
 void inputRead(FILE* input, FILE* output){
     fscanf(input, "%d", &orderCount);
-    order=(ORDER*)malloc(orderCount*sizeof(ORDER));
-    orderRead(input);
+    order=(ORDER*)malloc((orderCount+MAX_MANUAL_COUNT)*sizeof(ORDER));
+    for(int i=0;i<orderCount;i++) singleOrderRead(input);
     orderHandle();
     orderOutput(output);
 }
@@ -196,7 +209,7 @@ void fileOpen(){
     //input=stdin;
     output=stdout;
     dictRead(dict);
-    inputRead(input, output);
+    //inputRead(input, output);
 }
 
 void fileClose(){
