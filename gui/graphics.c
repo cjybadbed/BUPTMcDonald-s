@@ -109,7 +109,7 @@ static void create_all(GtkWidget *grid){
     //gtk_label_set_text(GTK_LABEL(time_label), time);
     gtk_grid_attach(GTK_GRID(grid), time_label, 0, 0, 2, 1);
 
-    GtkWidget* scale=gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 1, 100, 1);
+    GtkWidget* scale=gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 1, 1000, 1);
     gtk_range_set_value(GTK_RANGE(scale), 1);
     gtk_grid_attach(GTK_GRID(grid), scale, 3, 0, 2, 1);
     gtk_widget_set_size_request(scale, 100, -1);
@@ -143,7 +143,7 @@ gboolean ten_ms_handler(GtkWidget* grid_overall){ //TODO
         gtk_label_set_text(GTK_LABEL(time_label), sec2time(get_time()+ms_accumulated/1000));
         //progress_refresh();
         //order_refresh();
-        ms_accumulated-=1000;
+        ms_accumulated%=1000;
     } else return TRUE;
     return TRUE;
 }
