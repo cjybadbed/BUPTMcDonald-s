@@ -46,19 +46,24 @@ void secPrint(int sec, FILE* output){
 }
 
 int time2sec(char time[9]){
+    int n;
     int hour=(time[0]-'0')*10+time[1]-'0'-7,
         min=(time[3]-'0')*10+time[4]-'0',
         sec=(time[6]-'0')*10+time[7]-'0';
-    int foodCount=hour*3600+min*60+sec;
-    return foodCount;
+    n=hour*3600+min*60+sec;
+    return n;
 }
 
 char* sec2time(int sec){
+    static char time[9];
+    if(sec>=time2sec("23:59:59")){
+        sprintf(time, "23:59:59");
+        return time;
+    }
     int hour=7+(sec-sec%3600)/3600;
     sec%=3600;
     int min=(sec-sec%60)/60;
     sec%=60;
-    static char time[9];
     sprintf(time, "%02d:%02d:%02d", hour, min, sec);
     return time;
 }

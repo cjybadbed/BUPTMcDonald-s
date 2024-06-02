@@ -1,5 +1,6 @@
 #include <gtk/gtk.h>
 #include "core.c"
+#include <math.h>
 
 FOOD food[100];
 COMBO combo[100];
@@ -25,10 +26,10 @@ guint get_time(){
 
 static void clicked(GtkWidget* button){
     const gchar *name=gtk_button_get_label(GTK_BUTTON(button));
-    fprintf(nos, "%s %s\n", sec2time(get_time()), name);
-    rewind(nos);
-    int i=singleOrderRead(nos);
-    ithOrderHandle(i);
+    fprintf(stdout, "%s %s\n", sec2time(get_time()), name);
+    //rewind(nos);
+    //int i=singleOrderRead(nos);
+    //printf("%s",order[i].name);
     //ithOrderHandle(i);
 }
 
@@ -91,7 +92,7 @@ static void order_pane_create(GtkWidget* grid){
 
 static void create_all(GtkWidget *grid){
 
-    gtk_grid_set_row_homogeneous(GTK_GRID(grid), true);
+    //gtk_grid_set_row_homogeneous(GTK_GRID(grid), true);
     //gtk_grid_set_column_homogeneous(GTK_GRID(grid), true);
 
     GtkWidget* menu_grid=gtk_grid_new();
@@ -101,16 +102,14 @@ static void create_all(GtkWidget *grid){
 
     GtkWidget* time_label=gtk_label_new(NULL);
     gtk_widget_add_css_class(time_label, "time_label");
-    gtk_label_set_text(GTK_LABEL(time_label), sec2time(0)); //TODO
+    gtk_label_set_text(GTK_LABEL(time_label), sec2time(0));
     GtkCssProvider *cssProvider=gtk_css_provider_new();
     gtk_css_provider_load_from_string(cssProvider, ".time_label { font-size: 40px; }");
     gtk_style_context_add_provider_for_display(gtk_widget_get_display(grid), GTK_STYLE_PROVIDER(cssProvider), GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
-    //char* time=get_time();
-    //gtk_label_set_text(GTK_LABEL(time_label), time);
     gtk_grid_attach(GTK_GRID(grid), time_label, 0, 0, 2, 1);
 
-    GtkWidget* scale=gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 1, 1000, 1);
-    gtk_range_set_value(GTK_RANGE(scale), 1);
+    GtkWidget* scale=gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 0, 10, 0.1);
+    gtk_range_set_value(GTK_RANGE(scale), 0);
     gtk_grid_attach(GTK_GRID(grid), scale, 3, 0, 2, 1);
     gtk_widget_set_size_request(scale, 100, -1);
 
@@ -128,19 +127,21 @@ static void app_startup(){
 }
 
 gboolean ten_ms_handler(GtkWidget* grid_overall){ //TODO
-    if(get_time()>=time2sec("23:59:59")){
+    guint curr_time=get_time();
+    GtkWidget* scale=gtk_grid_get_child_at(GTK_GRID(grid_overall), 3, 0);
+    GtkWidget* time_label=gtk_grid_get_child_at(GTK_GRID(grid_overall), 0, 0);
+    if(curr_time>=time2sec("23:59:59")){
+        gtk_label_set_text(GTK_LABEL(time_label), "不伺候了您内！");
         GtkWidget* window=gtk_widget_get_parent(grid_overall);
         GtkAlertDialog* day_end_alert=gtk_alert_dialog_new("You've reached the end of the day!");
         gtk_alert_dialog_show(day_end_alert, GTK_WINDOW(window));
         return FALSE;
     }
-    GtkWidget* scale=gtk_grid_get_child_at(GTK_GRID(grid_overall), 3, 0);
-    GtkWidget* time_label=gtk_grid_get_child_at(GTK_GRID(grid_overall), 0, 0);
-    guint time_factor=(guint)gtk_range_get_value(GTK_RANGE(scale));
+    gdouble time_factor=exp(gtk_range_get_value(GTK_RANGE(scale)));
     static guint ms_accumulated=0;
     ms_accumulated+=10*time_factor;
     if(ms_accumulated>=1000){
-        gtk_label_set_text(GTK_LABEL(time_label), sec2time(get_time()+ms_accumulated/1000));
+        gtk_label_set_text(GTK_LABEL(time_label), sec2time(curr_time+ms_accumulated/1000));
         //progress_refresh();
         //order_refresh();
         ms_accumulated%=1000;
