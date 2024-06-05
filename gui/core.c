@@ -2,7 +2,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <gtk/gtk.h>
-#define MAX_MANUAL_COUNT 100
+#define MAX_FOOD 100
+#define MAX_COMBO 100
+#define MAX_ORDER 200
 
 struct FOOD{
     char name[51];
@@ -26,8 +28,9 @@ typedef struct FOOD FOOD;
 typedef struct COMBO COMBO;
 typedef struct ORDER ORDER;
 
-extern FOOD food[100];
-extern COMBO combo[100];
+extern FOOD food[MAX_FOOD];
+extern COMBO combo[MAX_COMBO];
+extern ORDER order[MAX_ORDER];
 
 extern FILE* dict;
 extern FILE* input;
@@ -35,7 +38,6 @@ extern FILE* output;
 
 extern int foodCount, comboCount, orderCount, w1, w2, closeSec, openSec;
 
-extern ORDER* order;
 
 void secPrint(int sec, FILE* output){
     int hour=7+(sec-sec%3600)/3600;
@@ -109,25 +111,54 @@ void dictRead(FILE* dict){
     }
 }
 
-int singleOrderRead(FILE* source){
-    static int i=0;
-    for(int j=0;j<20;j++) order[i].foodIndex[j]=-1;
-    order[i].out=0;
+bool singleOrderRead(int curr_time){
+    fpos_t pos;
+    fgetpos(input, &pos);
+    if(fgetc(input)==EOF){
+        fsetpos(input, &pos);
+        return 0;
+    }
+    fsetpos(input, &pos);
     char time[9]={0}, orderName[51]={0};
-    fscanf(source, "%s %s", time, orderName);
-    strcpy(order[i].name, orderName);
-    order[i].in=time2sec(time);
+    fscanf(input, "%s %s", time, orderName);
+    if(time2sec(time)!=curr_time){
+        fsetpos(input, &pos);
+        return 0;
+    }
+    for(int j=0;j<20;j++) order[orderCount].foodIndex[j]=-1;
+    order[orderCount].out=0;
+    strcpy(order[orderCount].name, orderName);
+    order[orderCount].in=time2sec(time);
     int temp=searchInFood(orderName);
     if(temp!=-1){
-        order[i].count=1;
-        order[i].foodIndex[0]=temp;
+        order[orderCount].count=1;
+        order[orderCount].foodIndex[0]=temp;
     } else{
         temp=searchInCombo(orderName);
-        for(int j=0;j<combo[temp].count;j++) order[i].foodIndex[j]=combo[temp].foodIndex[j];
-        order[i].count=combo[temp].count;
+        for(int j=0;j<combo[temp].count;j++) order[orderCount].foodIndex[j]=combo[temp].foodIndex[j];
+        order[orderCount].count=combo[temp].count;
     }
-    if(fgetc(source)==EOF) return -1;
-    return i++;
+    orderCount++;
+    return 1;
+}
+
+void _singleOrderRead(char* input){
+    for(int j=0;j<20;j++) order[orderCount].foodIndex[j]=-1;
+    order[orderCount].out=0;
+    char time[9]={0}, orderName[51]={0};
+    sscanf(input, "%s %s", time, orderName);
+    strcpy(order[orderCount].name, orderName);
+    order[orderCount].in=time2sec(time);
+    int temp=searchInFood(orderName);
+    if(temp!=-1){
+        order[orderCount].count=1;
+        order[orderCount].foodIndex[0]=temp;
+    } else{
+        temp=searchInCombo(orderName);
+        for(int j=0;j<combo[temp].count;j++) order[orderCount].foodIndex[j]=combo[temp].foodIndex[j];
+        order[orderCount].count=combo[temp].count;
+    }
+    orderCount++;
 }
 
 int cmp(const void* a, const void* b){
@@ -149,6 +180,14 @@ bool isImmediateComplete(int i){
         if(curr->captime-(curr->cap-1)*curr->time>=order[i].in) return false;
     }
     return true;
+}
+
+void singleOrderInputAndHandle(char* name, int curr_time){
+    char _order[50];
+    sprintf(_order, "%s %s\n", sec2time(curr_time), name);
+    _singleOrderRead(_order);
+    printf("%s", order[orderCount].name);
+    ithOrderHandle(orderCount-1);
 }
 
 void ithOrderHandle(int i){  //curOpenSec=w2orderOutSec+1
@@ -193,21 +232,21 @@ void orderOutput(FILE* output){
         else fprintf(output, "Fail\n");
     }
 }
-
+/*
 void inputRead(FILE* input, FILE* output){
     fscanf(input, "%d", &orderCount);
-    order=(ORDER*)malloc((orderCount+MAX_MANUAL_COUNT)*sizeof(ORDER));
+    order=(ORDER*)malloc((orderCount)*sizeof(ORDER));
     for(int i=0;i<orderCount;i++) singleOrderRead(input);
     orderHandle();
     orderOutput(output);
 }
-
+ */
 void fileOpen(){
-    for(int i=0; i<100; i++){
+    for(int i=0; i<MAX_COMBO; i++){
         memset(combo[i].name, 0, sizeof(combo[i].name));
         memset(combo[i].foodIndex, -1, sizeof(combo[i].foodIndex));
-        memset(food[i].name, 0, sizeof(food[i].name));
     }
+    for(int i=0; i<MAX_FOOD; i++) memset(food[i].name, 0, sizeof(food[i].name));
     dict=fopen("dict.dic", "r");
     input=fopen("input.txt", "r");
     //output=fopen("output.txt", "w+");
@@ -221,5 +260,4 @@ void fileClose(){
     fclose(dict);
     fclose(input);
     fclose(output);
-    free(order);
 }
