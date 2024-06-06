@@ -56,7 +56,7 @@ static void menu_create(GtkWidget *grid){
 
 static void order_pane_create(GtkWidget* grid){
     //int time=get_time();
-    int paned_size=700;
+    int paned_size=600;
     GtkWidget* paned=gtk_paned_new(GTK_ORIENTATION_HORIZONTAL);
     GtkWidget* left_paned=gtk_frame_new("pending");
     GtkWidget* right_paned=gtk_frame_new("done");

@@ -254,6 +254,8 @@ void fileOpen(){
     output=stdout;
     dictRead(dict);
     //inputRead(input, output);
+    int discard;
+    fscanf(input, "%d\n", &discard);
 }
 
 void fileClose(){
