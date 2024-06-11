@@ -182,14 +182,6 @@ bool isImmediateComplete(int i){
     return true;
 }
 
-void singleOrderInputAndHandle(char* name, int curr_time){
-    char _order[50];
-    sprintf(_order, "%s %s\n", sec2time(curr_time), name);
-    _singleOrderRead(_order);
-    printf("%s", order[orderCount].name);
-    ithOrderHandle(orderCount-1);
-}
-
 void ithOrderHandle(int i){  //curOpenSec=w2orderOutSec+1
     if((order[i].in>closeSec&&order[i].in<openSec)||order[i].in>time2sec("22:00:00")){
         order[i].out=-1;
@@ -219,6 +211,14 @@ void ithOrderHandle(int i){  //curOpenSec=w2orderOutSec+1
         closeSec=order[i].in;
         openSec=w2thBigSec(i+1)+1;
     }
+}
+
+void singleOrderInputAndHandle(char* name, int curr_time){
+    char _order[50];
+    sprintf(_order, "%s %s\n", sec2time(curr_time), name);
+    _singleOrderRead(_order);
+    printf("%s", order[orderCount].name);
+    ithOrderHandle(orderCount-1);
 }
 
 void orderHandle(){

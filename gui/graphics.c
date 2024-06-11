@@ -18,6 +18,7 @@ ORDER order[MAX_ORDER];
 
 int get_time(){
     guint sec=-1;
+    if(!gtk_application_get_windows(app)) return -1;
     GtkWindow* window=GTK_WINDOW(g_list_first(gtk_application_get_windows(app))->data);
     GtkWidget* grid_overall=gtk_window_get_child(window);
     GtkWidget* time_label=gtk_grid_get_child_at(GTK_GRID(grid_overall), 0, 0);
@@ -28,7 +29,7 @@ int get_time(){
 
 static void clicked(GtkWidget* button){
     int curr_time=get_time();
-    const gchar *name=gtk_button_get_label(GTK_BUTTON(button));
+    gchar *name=(gchar*)gtk_button_get_label(GTK_BUTTON(button));
     singleOrderInputAndHandle(name, curr_time);
 }
 
@@ -40,10 +41,10 @@ static void menu_create(GtkWidget *grid){
     }
     for(int i=0; i<foodCount; i++){
         GtkWidget *pBar=gtk_progress_bar_new();
-        gtk_widget_set_margin_top(pBar, 15);
+        //gtk_widget_set_margin_top(pBar, 5);
         gtk_widget_set_size_request(pBar, -1, -1);
         gtk_progress_bar_set_show_text(GTK_PROGRESS_BAR(pBar), TRUE);
-        gtk_progress_bar_set_text(GTK_PROGRESS_BAR(pBar), "test");
+        gtk_progress_bar_set_text(GTK_PROGRESS_BAR(pBar), "0");
         gtk_grid_attach(GTK_GRID(grid), pBar, 1, i, 2, 1);
     }
     for(int i=0; i<comboCount; i++){
@@ -104,6 +105,7 @@ static void create_all(GtkWidget *grid){
 static void app_startup(){
     GtkWidget *window=gtk_application_window_new(app);
     gtk_window_set_default_size(GTK_WINDOW(window), 600, 400);
+    gtk_window_set_title(GTK_WINDOW(window), "麦当劳点餐模拟系统");
     GtkWidget *grid=gtk_grid_new();
     gtk_window_set_child(GTK_WINDOW(window), grid);
     create_all(grid);
@@ -124,7 +126,7 @@ static void order_refresh(){
     gtk_grid_remove_column(GTK_GRID(right_grid), 0);
     if(orderCount){
         for(int i=0;i<orderCount;i++){
-            char order_content[50];
+            char order_content[60];
             if(order[i].out==-1) sprintf(order_content, "%d  %s", i+1, order[i].name);
             else sprintf(order_content, "%d  %s  %s", i+1, order[i].name, sec2time(order[i].out));
             GtkWidget* label=gtk_label_new(order_content);
@@ -173,6 +175,10 @@ static void progress_refresh(){
 
 gboolean ten_ms_handler(GtkWidget* grid_overall){ //TODO
     guint curr_time=get_time();
+    if(curr_time==-1) {
+        orderOutput(output);
+        return FALSE;
+    }
     GtkWidget* scale=gtk_grid_get_child_at(GTK_GRID(grid_overall), 3, 0);
     GtkWidget* time_label=gtk_grid_get_child_at(GTK_GRID(grid_overall), 0, 0);
     if(curr_time>=time2sec("23:59:59")){
@@ -180,6 +186,7 @@ gboolean ten_ms_handler(GtkWidget* grid_overall){ //TODO
         GtkWidget* window=gtk_widget_get_parent(grid_overall);
         GtkAlertDialog* day_end_alert=gtk_alert_dialog_new("You've reached the end of the day!");
         gtk_alert_dialog_show(day_end_alert, GTK_WINDOW(window));
+        orderOutput(output);
         return FALSE;
     }
     gdouble time_factor=exp(gtk_range_get_value(GTK_RANGE(scale)));
@@ -208,7 +215,6 @@ int main(int argc, char** argv){
     g_signal_connect(app, "activate", G_CALLBACK(app_activate), NULL);
     int status=g_application_run(G_APPLICATION(app), argc, argv);
     g_object_unref(app);
-    orderOutput(output);
     fileClose();
     return status;
 }
